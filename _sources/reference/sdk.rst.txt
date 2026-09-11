@@ -1,0 +1,30 @@
+Python SDK (forge-sdk)
+======================
+
+``forge-sdk`` is the Python client for the Forge platform APIs. Reference
+below is generated from the package's docstrings at every docs build.
+
+.. code-block:: python
+
+   from forge_sdk import ForgeClient
+
+   client = ForgeClient(registry_url="http://localhost:8000",
+                        dataforge_url="http://localhost:8001")
+
+Client
+------
+
+.. automodule:: forge_sdk.client
+   :members:
+
+Models
+------
+
+.. automodule:: forge_sdk.models
+   :members:
+
+Exceptions
+----------
+
+.. automodule:: forge_sdk.exceptions
+   :members:

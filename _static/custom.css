@@ -1,0 +1,40 @@
+/* Make the content area flexible and responsive */
+.wy-nav-content {
+    max-width: 90% !important;
+    margin: 0 auto !important;
+}
+
+/* For very wide screens, cap at a reasonable width for readability */
+@media screen and (min-width: 1800px) {
+    .wy-nav-content {
+        max-width: 1600px !important;
+    }
+}
+
+/* For medium screens */
+@media screen and (min-width: 1400px) and (max-width: 1799px) {
+    .wy-nav-content {
+        max-width: 85% !important;
+    }
+}
+
+/* For smaller screens, use more space */
+@media screen and (max-width: 1399px) {
+    .wy-nav-content {
+        max-width: 95% !important;
+    }
+}
+
+/* Swagger UI (API reference pages) defaults to a 1460px-capped wrapper;
+   let it fill the already-widened .wy-nav-content instead. */
+.swagger-ui .wrapper {
+    max-width: 100% !important;
+}
+
+/* The prose-width caps above (85-95%) leave a visible gutter that reads as
+   "not full width" for an embedded app like Swagger UI. Go edge-to-edge only
+   on pages that actually embed it, leaving normal prose pages untouched. */
+.wy-nav-content:has(.swagger-ui) {
+    max-width: 100% !important;
+}
+

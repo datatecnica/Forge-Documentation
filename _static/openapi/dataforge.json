@@ -1,0 +1,5344 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DataForge",
+    "description": "Schema validation, submission management, and review workflow API",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/api/v1/submissions/": {
+      "post": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Upload Submission",
+        "description": "Upload a CSV file, create a submission, and run validation.\n\nUnder the gold-anchored model (D19) the caller only supplies the\n``data_project_id``; the schema (and version), the gold dataset, and\nevery other piece of platform context are derived from the parent\nDataProject. The submission's identifiers (``primary_id``,\n``instance_id``) are not minted here \u2014 they're minted at accept time\nvia the cross-service mint flow (D33).",
+        "operationId": "upload_submission_api_v1_submissions__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_submission_api_v1_submissions__post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "List Submissions",
+        "description": "List submissions, optionally filtered by status, DataProject, and/or submitter.",
+        "operationId": "list_submissions_api_v1_submissions__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status",
+              "title": "Status"
+            },
+            "description": "Filter by status"
+          },
+          {
+            "name": "data_project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter to submissions under this DataProject",
+              "title": "Data Project Id"
+            },
+            "description": "Filter to submissions under this DataProject"
+          },
+          {
+            "name": "submitter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter to submissions by this user",
+              "title": "Submitter"
+            },
+            "description": "Filter to submissions by this user"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/confirm-mapping": {
+      "post": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Confirm Mapping",
+        "description": "Confirm (optionally renamed) columns coming out of AI schema-matching and run\nthe first validation pass.\n\nOnly valid while status == MATCHING_SCHEMA \u2014 i.e. once, right after\nupload_submission, before this submission has ever been validated.\ncolumn_mapping renames source headers ({source: target}); leave it null\nto validate the file as-is (user chose to skip AI mapping entirely).",
+        "operationId": "confirm_mapping_api_v1_submissions__submission_id__confirm_mapping_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmMappingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/resubmit": {
+      "post": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Resubmit Submission",
+        "description": "Upload a corrected file to an existing submission, creating a new version.\n\nOnly valid when the submission is in corrections_needed status.\nRaises 409 (via InvalidTransitionError handler) for any other status.\n\nUses the same schema as the original submission.",
+        "operationId": "resubmit_submission_api_v1_submissions__submission_id__resubmit_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_resubmit_submission_api_v1_submissions__submission_id__resubmit_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}": {
+      "get": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Get Submission",
+        "description": "Get submission details by ID.",
+        "operationId": "get_submission_api_v1_submissions__submission_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/report": {
+      "get": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Get Report",
+        "description": "Download the validation report for the latest version.",
+        "operationId": "get_report_api_v1_submissions__submission_id__report_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportFormat",
+              "description": "Report format",
+              "default": "json"
+            },
+            "description": "Report format"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/report/formatted": {
+      "get": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Get Formatted Report",
+        "description": "Validation report grouped by (field, rule, message) with occurrence counts.\n\nReturns errors and warnings separately, each with a grouped summary and a\nper-row detail list. Replaces the forge-app api_server proxy that called\nthis service and re-aggregated the result.",
+        "operationId": "get_formatted_report_api_v1_submissions__submission_id__report_formatted_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Formatted Report Api V1 Submissions  Submission Id  Report Formatted Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/revalidate": {
+      "post": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Revalidate Submission",
+        "description": "Re-run validation on the current stored file without bumping the version or changing status.\n\nIntended for post-edit re-validation: the caller first updates the file via PUT /file,\nthen calls this endpoint to get a fresh validation result.",
+        "operationId": "revalidate_submission_api_v1_submissions__submission_id__revalidate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/recheck-compliance": {
+      "post": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Recheck Compliance",
+        "description": "Force-recheck this submission against its gold dataset's *current*\nschema version \u2014 the manual counterpart to the automatic background\nsweep triggered by gold upgrades.\n\nUnlike ``POST /revalidate`` above, this can change submission state: an\nACCEPTED submission that no longer complies gets a corrective revision\ncloned (same as the automatic sweep), and a compliant one gets its\n``latest_compliant_version`` stamped forward. Runs inline and returns\nthe outcome immediately rather than relying on a silent background task.",
+        "operationId": "recheck_compliance_api_v1_submissions__submission_id__recheck_compliance_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          },
+          {
+            "name": "checked_by",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Checked By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevalidationOutcome"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/ready_for_review": {
+      "post": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Mark Ready For Review",
+        "description": "Transition a corrections_needed submission back to pending_review.\n\nCalled after the submitter has fixed errors via in-place editing and\nrevalidation passes.  Idempotent if already in pending_review.\nReturns 409 for any other current status.",
+        "operationId": "mark_ready_for_review_api_v1_submissions__submission_id__ready_for_review_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/withdraw": {
+      "post": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Withdraw Submission",
+        "description": "Withdraw a submission, moving it to a terminal WITHDRAWN state.\n\nAllowed from any non-terminal status except ACCEPTED.\nWithdrawn submissions are excluded from active project pipelines.",
+        "operationId": "withdraw_submission_api_v1_submissions__submission_id__withdraw_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/file": {
+      "put": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Update Submission File",
+        "description": "Replace the stored CSV for the current version with an edited file.\n\nOverwrites the file for the current version without triggering\nre-validation or a status change. Used by the in-place edit pathway\nwhen the reviewer or submitter fixes errors in the uploaded data\npre-accept; the platform-generated ``primary_id`` / ``instance_id``\ncolumns are added at accept time by the mint flow (D14), not here.",
+        "operationId": "update_submission_file_api_v1_submissions__submission_id__file_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_update_submission_file_api_v1_submissions__submission_id__file_put"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Update Submission File Api V1 Submissions  Submission Id  File Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Download Submission File",
+        "description": "Download the raw CSV file for the latest submission version.",
+        "operationId": "download_submission_file_api_v1_submissions__submission_id__file_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/apply-mapping": {
+      "post": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Apply Mapping And Resubmit",
+        "description": "Apply a column-level value mapping to the submission file and resubmit.\n\nLoads the current file from storage, applies the mapping in-process,\nand creates a new submission version via the resubmit flow.\nmapping format: {column: {raw_value: canonical_value}}",
+        "operationId": "apply_mapping_and_resubmit_api_v1_submissions__submission_id__apply_mapping_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyMappingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/harmonize": {
+      "post": {
+        "tags": [
+          "Submissions"
+        ],
+        "summary": "Harmonize Submission",
+        "description": "Run harmonization matching on a submission's CSV against its schema CDEs.\n\nReturns per-column mapping suggestions with confidence scores and match tiers.\nAI matching runs server-side in registry-service \u2014 dataforge governance only.",
+        "operationId": "harmonize_submission_api_v1_submissions__submission_id__harmonize_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          },
+          {
+            "name": "use_ai",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Use AI (hybrid retrieval + Claude) for tier-2 matching",
+              "default": true,
+              "title": "Use Ai"
+            },
+            "description": "Use AI (hybrid retrieval + Claude) for tier-2 matching"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Harmonize Submission Api V1 Submissions  Submission Id  Harmonize Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/claim": {
+      "post": {
+        "tags": [
+          "Review"
+        ],
+        "summary": "Claim Submission",
+        "description": "Claim a submission for review.",
+        "operationId": "claim_submission_api_v1_submissions__submission_id__claim_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/release": {
+      "post": {
+        "tags": [
+          "Review"
+        ],
+        "summary": "Release Submission",
+        "description": "Release a claim on a submission.",
+        "operationId": "release_submission_api_v1_submissions__submission_id__release_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/accept": {
+      "post": {
+        "tags": [
+          "Review"
+        ],
+        "summary": "Accept Submission",
+        "description": "Accept a submission and append its data to the target gold dataset.\n\nUnder the gold-anchored model every submission attaches to a gold\ndataset; the legacy master-append fallback was removed (D40). The\nAPPEND strategy triggers a cross-service mint call to registry\n(D33). REVISION / AUTO_RESOLVE skip the mint and operate on\nalready-minted gold rows.",
+        "operationId": "accept_submission_api_v1_submissions__submission_id__accept_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/submissions/{submission_id}/reject": {
+      "post": {
+        "tags": [
+          "Review"
+        ],
+        "summary": "Reject Submission",
+        "description": "Reject a submission with optional notes.",
+        "operationId": "reject_submission_api_v1_submissions__submission_id__reject_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Submission Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/": {
+      "post": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Create Gold Dataset",
+        "operationId": "create_gold_dataset_api_v1_gold__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGoldDatasetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldDatasetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "List Gold Datasets",
+        "operationId": "list_gold_datasets_api_v1_gold__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schema_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Schema Id"
+            }
+          },
+          {
+            "name": "created_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter to datasets owned by this user",
+              "title": "Created By"
+            },
+            "description": "Filter to datasets owned by this user"
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated dataset IDs to fetch",
+              "title": "Ids"
+            },
+            "description": "Comma-separated dataset IDs to fetch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldDatasetListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}": {
+      "patch": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Update Gold Dataset",
+        "description": "Partial-update a gold dataset's metadata / display fields.\n\n``GoldDataset.metadata`` is never locked (D21). Scheme edits go\nthrough the dedicated ``/identifier-scheme`` sub-resource below.",
+        "operationId": "update_gold_dataset_api_v1_gold__dataset_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGoldDatasetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldDatasetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Get Gold Dataset",
+        "operationId": "get_gold_dataset_api_v1_gold__dataset_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldDatasetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Delete Gold Dataset",
+        "operationId": "delete_gold_dataset_api_v1_gold__dataset_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/identifier-scheme": {
+      "get": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Get Identifier Scheme",
+        "description": "Return the current identifier scheme (may be null).",
+        "operationId": "get_identifier_scheme_api_v1_gold__dataset_id__identifier_scheme_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentifierSchemeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Set Identifier Scheme",
+        "description": "Replace the identifier scheme on a gold dataset.\n\nStatus codes:\n  * 200 \u2014 scheme set successfully (or replaced pre-lock).\n  * 404 \u2014 gold dataset not found.\n  * 409 \u2014 scheme is locked by a prior accept (D21, D23).\n  * 422 \u2014 scheme is internally inconsistent (validate_scheme; D25),\n    or a multi-valued metadata key has no matching schema field\n    (validate_scheme_against_schema_fields) \u2014 best-effort, skipped\n    if the schema can't be loaded.",
+        "operationId": "set_identifier_scheme_api_v1_gold__dataset_id__identifier_scheme_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentifierScheme-Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentifierSchemeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Clear Identifier Scheme",
+        "description": "Clear the identifier scheme on a gold dataset.\n\nReturns 409 once the scheme is locked. A cleared scheme reverts the\ngold dataset to the \"no scheme configured\" state \u2014 accept attempts\nwill fail with 409 until a new scheme is configured (D24).",
+        "operationId": "clear_identifier_scheme_api_v1_gold__dataset_id__identifier_scheme_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentifierSchemeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/snapshots": {
+      "get": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "List Snapshots",
+        "description": "Return the changelog for a gold dataset, ordered by version ascending.",
+        "operationId": "list_snapshots_api_v1_gold__dataset_id__snapshots_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SnapshotEntry"
+                  },
+                  "title": "Response List Snapshots Api V1 Gold  Dataset Id  Snapshots Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/validate": {
+      "post": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Validate Gold Data",
+        "description": "Validate uploaded CSV against the gold dataset's schema without saving.\n\nProvenance columns (starting with ``_``) are stripped before validation so\nthey don't cause spurious schema errors.",
+        "operationId": "validate_gold_data_api_v1_gold__dataset_id__validate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_validate_gold_data_api_v1_gold__dataset_id__validate_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/rows": {
+      "delete": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Delete Gold Rows",
+        "description": "Delete specific rows from a gold dataset by their identifier column value.\n\nTargeted delete: accepts a list of row IDs, removes matching rows,\nwrites a snapshot with the required reason. Does not re-run schema\nvalidation \u2014 rows were already validated at acceptance time.",
+        "operationId": "delete_gold_rows_api_v1_gold__dataset_id__rows_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteRowsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Gold Rows Api V1 Gold  Dataset Id  Rows Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "List Gold Rows",
+        "description": "Paginated, optionally-searched/filtered view of a gold dataset's rows.\n\nFilters server-side before paginating, so the client never needs to hold\nmore than one page in memory \u2014 the full-CSV-download-and-parse approach\nthis replaces doesn't survive datasets in the ~100k-row range (see\n.scratch/table-search/issue-001.md).",
+        "operationId": "list_gold_rows_api_v1_gold__dataset_id__rows_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Case-insensitive substring match across visible columns",
+              "title": "Search"
+            },
+            "description": "Case-insensitive substring match across visible columns"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "URL-encoded JSON {column: {op, value}}, ANDed with search",
+              "title": "Filter"
+            },
+            "description": "URL-encoded JSON {column: {op, value}}, ANDed with search"
+          },
+          {
+            "name": "show_provenance",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Show Provenance"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldRowsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Update Gold Rows",
+        "description": "Apply cell-level edits to specific rows by their identifier column value.\n\nTargeted update, mirroring ``delete_gold_rows``: only the rows that\nactually changed are sent, not the whole dataset \u2014 required once the\nclient pages/searches instead of holding the full CSV in memory (see\n.scratch/table-search/issue-001.md).",
+        "operationId": "update_gold_rows_api_v1_gold__dataset_id__rows_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRowsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldDatasetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/columns/{column}/distinct-values": {
+      "get": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Get Gold Column Distinct Values",
+        "description": "Distinct non-blank values of one column, for populating a filter's value picker.\n\n``truncated=True`` means there are more than ``limit`` distinct values \u2014\nthe caller should treat the list as suggestions, not a complete set.",
+        "operationId": "get_gold_column_distinct_values_api_v1_gold__dataset_id__columns__column__distinct_values_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "column",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Column"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "show_provenance",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Show Provenance"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Gold Column Distinct Values Api V1 Gold  Dataset Id  Columns  Column  Distinct Values Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/rows/export": {
+      "get": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Export Gold Rows",
+        "description": "Export every row matching the current search/filter as a CSV attachment.\n\nWYSIWYG with the filtered table (same row-scoping as ``/rows``) \u2014\ndeliberately does not apply ``/download``'s schema-compliance filtering\nor provenance-stripping, since the point is to export exactly what's\non screen, not a separately-scoped \"clean\" export.",
+        "operationId": "export_gold_rows_api_v1_gold__dataset_id__rows_export_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter"
+            }
+          },
+          {
+            "name": "show_provenance",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Show Provenance"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/data": {
+      "put": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Update Gold Data",
+        "description": "Replace the accumulated gold dataset data with the edited CSV.\n\nProvenance columns for rows that lack them (i.e. newly added rows) are\nfilled with ``manual_edit`` defaults before saving.",
+        "operationId": "update_gold_data_api_v1_gold__dataset_id__data_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_update_gold_data_api_v1_gold__dataset_id__data_put"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldDatasetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/snapshots/{version}/download": {
+      "get": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Download Snapshot",
+        "description": "Download the gold dataset as it was at a specific snapshot version.",
+        "operationId": "download_snapshot_api_v1_gold__dataset_id__snapshots__version__download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/snapshots/diff": {
+      "get": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Diff Snapshots",
+        "description": "Compute a row-level diff between two snapshots of a gold dataset.",
+        "operationId": "diff_snapshots_api_v1_gold__dataset_id__snapshots_diff_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          },
+          {
+            "name": "v_before",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "Older snapshot version",
+              "title": "V Before"
+            },
+            "description": "Older snapshot version"
+          },
+          {
+            "name": "v_after",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "Newer snapshot version",
+              "title": "V After"
+            },
+            "description": "Newer snapshot version"
+          },
+          {
+            "name": "key_col",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional key column for identity-based diff",
+              "title": "Key Col"
+            },
+            "description": "Optional key column for identity-based diff"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapDiffResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/download": {
+      "get": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Download Gold Dataset",
+        "description": "Download the gold dataset as CSV, filtered to schema-compliant rows.\n\nRows are kept only if their `_latest_compliant_version` meets the\ngold dataset's current schema version by (major, minor). All\nprovenance (`_`-prefixed) columns are stripped from the output \u2014\nconsumers get schema-valid data only, by default.",
+        "operationId": "download_gold_dataset_api_v1_gold__dataset_id__download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/version-status": {
+      "get": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Gold Version Status",
+        "description": "Pull the latest schema version from the registry and return upgrade status.",
+        "operationId": "gold_version_status_api_v1_gold__dataset_id__version_status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldVersionStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/{dataset_id}/upgrade": {
+      "post": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Upgrade Gold Dataset",
+        "description": "Upgrade the gold dataset to a new schema version, cascade UPGRADE_REQUIRED\nto contributing DataProjects, and schedule schema re-validation for minor/major bumps.\n\nPatch bumps never enqueue re-validation \u2014 per ADR-0004 they are purely\nnon-structural and cannot change any submission's compliance.",
+        "operationId": "upgrade_gold_dataset_api_v1_gold__dataset_id__upgrade_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dataset Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoldUpgradeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldDatasetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gold/concatenate": {
+      "post": {
+        "tags": [
+          "Gold Datasets"
+        ],
+        "summary": "Concatenate Gold Datasets",
+        "description": "Merge rows from multiple gold datasets into a single target dataset.\n\nAll source datasets must share the same schema_id as the target.\nDuplicate primary_id values across sources raise HTTP 422.\nThe merged result is written as a new snapshot on the target.",
+        "operationId": "concatenate_gold_datasets_api_v1_gold_concatenate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConcatenateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldDatasetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/": {
+      "post": {
+        "tags": [
+          "Data Projects"
+        ],
+        "summary": "Create Project",
+        "description": "Create a DataProject attached to an existing gold dataset (D19).\n\nIf the caller omits ``metadata`` we snapshot the parent gold\ndataset's metadata (D3). Callers may override the snapshot by\nsupplying a non-empty dict.",
+        "operationId": "create_project_api_v1_projects__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataProjectCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProjectResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Data Projects"
+        ],
+        "summary": "List Projects",
+        "description": "List DataProjects with optional filters, paginated.",
+        "operationId": "list_projects_api_v1_projects__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schema_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Schema Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "created_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Created By"
+            }
+          },
+          {
+            "name": "org",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Org"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProjectListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}": {
+      "get": {
+        "tags": [
+          "Data Projects"
+        ],
+        "summary": "Get Project",
+        "description": "Get a DataProject, updating latest_available_version from the registry if needed.",
+        "operationId": "get_project_api_v1_projects__project_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProjectResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Data Projects"
+        ],
+        "summary": "Update Project",
+        "description": "Partial-update a DataProject.\n\nPer invariant 3 of the gold-anchored model, ``gold_dataset_id`` is\nimmutable once set \u2014 there is no way to re-attach. ``metadata`` is\nrejected with HTTP 409 after the first ID is minted under this DP\n(D18).",
+        "operationId": "update_project_api_v1_projects__project_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataProjectUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProjectResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Data Projects"
+        ],
+        "summary": "Archive Project",
+        "description": "Hard-delete a DataProject. Returns 204 on success, 404 if not found.",
+        "operationId": "archive_project_api_v1_projects__project_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/version-status": {
+      "get": {
+        "tags": [
+          "Data Projects"
+        ],
+        "summary": "Project Version Status",
+        "description": "Return schema version status relative to the latest registry version.",
+        "operationId": "project_version_status_api_v1_projects__project_id__version_status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectVersionStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/upgrade": {
+      "post": {
+        "tags": [
+          "Data Projects"
+        ],
+        "summary": "Upgrade Project",
+        "description": "Upgrade a DataProject to a new schema version, clearing upgrade_required.",
+        "operationId": "upgrade_project_api_v1_projects__project_id__upgrade_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "new_version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "New Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProjectResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/submissions": {
+      "get": {
+        "tags": [
+          "Data Projects"
+        ],
+        "summary": "List Project Submissions",
+        "description": "List all submissions belonging to this data project.",
+        "operationId": "list_project_submissions_api_v1_projects__project_id__submissions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/accepted-data": {
+      "get": {
+        "tags": [
+          "Data Projects"
+        ],
+        "summary": "Get Project Accepted Data",
+        "description": "Return the rows accepted into the gold dataset that originated from this project.\n\nRows are matched by _submission_id against the project's accepted submissions.\nReturns a JSON list of row dicts, or 404 if the project has no linked gold dataset\nor no accepted data yet.",
+        "operationId": "get_project_accepted_data_api_v1_projects__project_id__accepted_data_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/upload-and-advance": {
+      "post": {
+        "tags": [
+          "Data Projects"
+        ],
+        "summary": "Upload And Advance",
+        "description": "Upload a CSV with optional column renaming and value remapping, then validate.\n\nBundles the harmonization apply step with submission creation so React\ncallers make a single request instead of upload \u2192 apply-mapping \u2192 resubmit.\ncolumn_mapping renames headers; value_mapping remaps cell values.",
+        "operationId": "upload_and_advance_api_v1_projects__project_id__upload_and_advance_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_and_advance_api_v1_projects__project_id__upload_and_advance_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/complete": {
+      "post": {
+        "tags": [
+          "Data Projects"
+        ],
+        "summary": "Complete Project",
+        "description": "Mark a DataProject as complete.\n\nTransitions the project status to 'complete'. Notification delivery\nto admins/reviewers is handled by the registry-service notification\nsystem \u2014 this endpoint records the state change only.",
+        "operationId": "complete_project_api_v1_projects__project_id__complete_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "completed_by",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "User marking the project complete",
+              "title": "Completed By"
+            },
+            "description": "User marking the project complete"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataProjectResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Root",
+        "description": "Service info.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Root  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health",
+        "description": "Health check endpoint.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApplyMappingRequest": {
+        "properties": {
+          "submitter": {
+            "type": "string",
+            "title": "Submitter"
+          },
+          "mapping": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Mapping"
+          }
+        },
+        "type": "object",
+        "required": [
+          "submitter",
+          "mapping"
+        ],
+        "title": "ApplyMappingRequest"
+      },
+      "Body_resubmit_submission_api_v1_submissions__submission_id__resubmit_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "submitter": {
+            "type": "string",
+            "title": "Submitter"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "submitter"
+        ],
+        "title": "Body_resubmit_submission_api_v1_submissions__submission_id__resubmit_post"
+      },
+      "Body_update_gold_data_api_v1_gold__dataset_id__data_put": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "updated_by": {
+            "type": "string",
+            "title": "Updated By",
+            "default": ""
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_update_gold_data_api_v1_gold__dataset_id__data_put"
+      },
+      "Body_update_submission_file_api_v1_submissions__submission_id__file_put": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_update_submission_file_api_v1_submissions__submission_id__file_put"
+      },
+      "Body_upload_and_advance_api_v1_projects__project_id__upload_and_advance_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "submitter": {
+            "type": "string",
+            "title": "Submitter"
+          },
+          "submission_type": {
+            "type": "string",
+            "title": "Submission Type",
+            "description": "standard | revision | append | auto_resolve",
+            "default": "standard"
+          },
+          "column_mapping": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column Mapping",
+            "description": "JSON dict mapping source column names to schema field names"
+          },
+          "value_mapping": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Mapping",
+            "description": "JSON dict {col: {old_value: new_value}} applied after column renaming"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "submitter"
+        ],
+        "title": "Body_upload_and_advance_api_v1_projects__project_id__upload_and_advance_post"
+      },
+      "Body_upload_submission_api_v1_submissions__post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "data_project_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Data Project Id",
+            "description": "Parent DataProject UUID"
+          },
+          "submitter": {
+            "type": "string",
+            "title": "Submitter",
+            "description": "Submitter identity"
+          },
+          "submission_type": {
+            "type": "string",
+            "title": "Submission Type",
+            "description": "'standard', 'revision', 'append', or 'auto_resolve'",
+            "default": "standard"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "data_project_id",
+          "submitter"
+        ],
+        "title": "Body_upload_submission_api_v1_submissions__post"
+      },
+      "Body_validate_gold_data_api_v1_gold__dataset_id__validate_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_validate_gold_data_api_v1_gold__dataset_id__validate_post"
+      },
+      "ColumnMapping": {
+        "properties": {
+          "entity_id_column": {
+            "type": "string",
+            "title": "Entity Id Column",
+            "default": "entity_id"
+          },
+          "source_id_column": {
+            "type": "string",
+            "title": "Source Id Column",
+            "default": "source_id"
+          },
+          "rep_no_column": {
+            "type": "string",
+            "title": "Rep No Column",
+            "default": "rep_no"
+          }
+        },
+        "type": "object",
+        "title": "ColumnMapping",
+        "description": "Schema-column names the mint engine reads on accept.\n\nDefaults to the canonical names introduced by the rename PR\n(``entity_id`` / ``source_id`` / ``rep_no``). Override per gold\ndataset when the bound schema uses different vocabulary \u2014 e.g. a\nclinical schema declaring ``subject_id`` / ``sample_id`` / ``visit``.\n\nOnly the columns the mint engine *reads* are mapped here; the\nprovenance columns it *writes* (``primary_id``, ``instance_id``)\nstay canonical per D13. Template tokens like ``{rep_no}`` also keep\ntheir literal names \u2014 they're tokens, not column references."
+      },
+      "ConcatenateRequest": {
+        "properties": {
+          "source_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "minItems": 2,
+            "title": "Source Ids",
+            "description": "Gold dataset IDs to merge (in order)"
+          },
+          "target_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Target Id",
+            "description": "Gold dataset to write merged rows into"
+          },
+          "concatenated_by": {
+            "type": "string",
+            "title": "Concatenated By",
+            "default": ""
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_ids",
+          "target_id"
+        ],
+        "title": "ConcatenateRequest"
+      },
+      "ConfirmMappingRequest": {
+        "properties": {
+          "submitter": {
+            "type": "string",
+            "title": "Submitter"
+          },
+          "column_mapping": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column Mapping"
+          }
+        },
+        "type": "object",
+        "required": [
+          "submitter"
+        ],
+        "title": "ConfirmMappingRequest",
+        "description": "Body for POST /{submission_id}/confirm-mapping.\n\ncolumn_mapping renames source headers to schema field names\n({source_column: target_column}) \u2014 distinct from ApplyMappingRequest's\n``mapping``, which remaps cell values within an already-named column."
+      },
+      "CreateGoldDatasetRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "schema_id": {
+            "type": "string",
+            "title": "Schema Id"
+          },
+          "schema_name": {
+            "type": "string",
+            "title": "Schema Name",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version",
+            "default": "1.0.0"
+          },
+          "admins": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Admins"
+          },
+          "reviewers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reviewers"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Metadata"
+          },
+          "identifier_scheme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdentifierScheme-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "org": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org"
+          },
+          "visibility": {
+            "type": "string",
+            "title": "Visibility",
+            "default": "org"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "schema_id",
+          "created_by"
+        ],
+        "title": "CreateGoldDatasetRequest",
+        "description": "Create payload for a gold dataset.\n\n``identifier_scheme`` is optional at create time (D24). When omitted\nthe gold dataset exists and accepts DataProject attachment, but the\nfirst accept attempt fails until a scheme is configured via\n``PATCH /api/v1/gold/{id}/identifier-scheme``."
+      },
+      "DataProjectCreate": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org"
+          },
+          "schema_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Schema Id"
+          },
+          "schema_name": {
+            "type": "string",
+            "title": "Schema Name"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "gold_dataset_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Gold Dataset Id"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Metadata",
+            "description": "Free-form metadata. Becomes locked after the first ID is minted under this DataProject (D18)."
+          },
+          "admins": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Admins"
+          },
+          "reviewers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reviewers"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "schema_id",
+          "schema_name",
+          "schema_version",
+          "gold_dataset_id",
+          "created_by"
+        ],
+        "title": "DataProjectCreate",
+        "description": "Create payload for a DataProject.\n\nUnder D19 every DataProject is attached to a GoldDataset at creation;\n``gold_dataset_id`` is required. ``metadata`` is copied from\n``GoldDataset.metadata`` as a one-time snapshot (D3) \u2014 callers may\noverride at create, but in steady state forge-app passes through what\nthe gold dataset carries."
+      },
+      "DataProjectListResponse": {
+        "properties": {
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/DataProjectResponse"
+            },
+            "type": "array",
+            "title": "Projects"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "skip": {
+            "type": "integer",
+            "title": "Skip"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "projects",
+          "total",
+          "skip",
+          "limit"
+        ],
+        "title": "DataProjectListResponse"
+      },
+      "DataProjectResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org"
+          },
+          "schema_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Schema Id"
+          },
+          "schema_name": {
+            "type": "string",
+            "title": "Schema Name"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "latest_available_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Available Version"
+          },
+          "gold_dataset_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Gold Dataset Id"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Metadata"
+          },
+          "metadata_locked": {
+            "type": "boolean",
+            "title": "Metadata Locked",
+            "default": false
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "admins": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Admins"
+          },
+          "reviewers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reviewers"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "org",
+          "schema_id",
+          "schema_name",
+          "schema_version",
+          "latest_available_version",
+          "gold_dataset_id",
+          "status",
+          "admins",
+          "reviewers",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DataProjectResponse"
+      },
+      "DataProjectUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org"
+          },
+          "admins": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admins"
+          },
+          "reviewers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewers"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "DataProjectUpdate",
+        "description": "Partial-update payload for a DataProject.\n\n``metadata`` may be supplied only while ``metadata_locked`` is False;\nthe service raises ``MetadataLockedError`` once any ID has been\nminted (D18), which the route translates to HTTP 409."
+      },
+      "DedupConfig": {
+        "properties": {
+          "disambiguator_columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disambiguator Columns"
+          },
+          "conflict_columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict Columns"
+          }
+        },
+        "type": "object",
+        "title": "DedupConfig",
+        "description": "Duplicate-resolution configuration nested on the identifier scheme.\n\nMatch-key shape (``disambiguator_columns`` / ``conflict_columns``)\nis carried forward from today's GP2 behaviour per D20; migration to\nthe spec's ``match_keys`` / ``on_duplicate`` form is a future PR.\n\nThe named columns refer to schema column names directly \u2014 the\n:class:`ColumnMapping` rename only affects the canonical entity /\nsource / rep_no columns read by the mint engine."
+      },
+      "DeleteRowsRequest": {
+        "properties": {
+          "row_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Row Ids",
+            "description": "Values in id_column to delete"
+          },
+          "id_column": {
+            "type": "string",
+            "title": "Id Column",
+            "description": "Column to match row_ids against (default: instance_id)",
+            "default": "instance_id"
+          },
+          "notes": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Notes",
+            "description": "Required reason for deletion"
+          },
+          "deleted_by": {
+            "type": "string",
+            "title": "Deleted By",
+            "description": "User performing the deletion",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "row_ids",
+          "notes"
+        ],
+        "title": "DeleteRowsRequest"
+      },
+      "GoldDatasetListResponse": {
+        "properties": {
+          "datasets": {
+            "items": {
+              "$ref": "#/components/schemas/GoldDatasetResponse"
+            },
+            "type": "array",
+            "title": "Datasets"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "datasets",
+          "total"
+        ],
+        "title": "GoldDatasetListResponse"
+      },
+      "GoldDatasetResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "schema_id": {
+            "type": "string",
+            "title": "Schema Id"
+          },
+          "schema_name": {
+            "type": "string",
+            "title": "Schema Name"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "latest_available_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Available Version"
+          },
+          "admins": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Admins"
+          },
+          "reviewers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reviewers"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Metadata"
+          },
+          "identifier_scheme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdentifierScheme-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scheme_locked": {
+            "type": "boolean",
+            "title": "Scheme Locked",
+            "description": "True once the scheme has been frozen by the first accepted submission (D21). Subsequent edits to identifier_scheme will return HTTP 409.",
+            "default": false
+          },
+          "org": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org"
+          },
+          "visibility": {
+            "type": "string",
+            "title": "Visibility"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "record_count": {
+            "type": "integer",
+            "title": "Record Count"
+          },
+          "submission_count": {
+            "type": "integer",
+            "title": "Submission Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "schema_id",
+          "schema_name",
+          "schema_version",
+          "latest_available_version",
+          "admins",
+          "reviewers",
+          "identifier_scheme",
+          "org",
+          "visibility",
+          "created_by",
+          "created_at",
+          "updated_at",
+          "record_count",
+          "submission_count"
+        ],
+        "title": "GoldDatasetResponse"
+      },
+      "GoldRowsResponse": {
+        "properties": {
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns",
+            "description": "Visible column names, in dataset order"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Rows",
+            "description": "This page's rows"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count",
+            "description": "Total rows matching the search filter, before pagination"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "columns",
+          "rows",
+          "total_count",
+          "page",
+          "page_size"
+        ],
+        "title": "GoldRowsResponse"
+      },
+      "GoldUpgradeRequest": {
+        "properties": {
+          "new_version": {
+            "type": "string",
+            "title": "New Version"
+          },
+          "upgraded_by": {
+            "type": "string",
+            "title": "Upgraded By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "new_version",
+          "upgraded_by"
+        ],
+        "title": "GoldUpgradeRequest"
+      },
+      "GoldVersionStatusResponse": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Dataset Id"
+          },
+          "schema_id": {
+            "type": "string",
+            "title": "Schema Id"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "latest_available_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Available Version"
+          },
+          "upgrade_available": {
+            "type": "boolean",
+            "title": "Upgrade Available"
+          },
+          "bump_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bump Level"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "schema_id",
+          "schema_version",
+          "latest_available_version",
+          "upgrade_available",
+          "bump_level"
+        ],
+        "title": "GoldVersionStatusResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "IdGenConfig": {
+        "properties": {
+          "method": {
+            "$ref": "#/components/schemas/IdGenMethod",
+            "default": "template"
+          },
+          "template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template"
+          }
+        },
+        "type": "object",
+        "title": "IdGenConfig",
+        "description": "How a single identifier (primary_id or instance_id) is generated."
+      },
+      "IdGenMethod": {
+        "type": "string",
+        "enum": [
+          "template"
+        ],
+        "title": "IdGenMethod",
+        "description": "Identifier-generation method.\n\nMVP ships ``TEMPLATE`` only. ``UUID`` and ``COMPOSITE`` are reserved\nfor future PRs and intentionally not enumerated yet so that\nintroducing them is an additive change."
+      },
+      "IdentifierScheme-Input": {
+        "properties": {
+          "primary_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdGenConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instance_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdGenConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metadata_template": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Metadata Template"
+          },
+          "dedup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DedupConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "column_mapping": {
+            "$ref": "#/components/schemas/ColumnMapping"
+          }
+        },
+        "type": "object",
+        "title": "IdentifierScheme",
+        "description": "Identifier scheme attached to a ``GoldDataset``.\n\nLocked on first accept per D21: ``primary_id``, ``instance_id``,\n``metadata_template``, ``dedup`` and ``column_mapping`` are immutable\nthereafter. To use a different scheme, create a new gold dataset\n(fork-the-gold-dataset semantics)."
+      },
+      "IdentifierScheme-Output": {
+        "properties": {
+          "primary_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdGenConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instance_id": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdGenConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metadata_template": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Metadata Template"
+          },
+          "dedup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DedupConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "column_mapping": {
+            "$ref": "#/components/schemas/ColumnMapping"
+          }
+        },
+        "type": "object",
+        "title": "IdentifierScheme",
+        "description": "Identifier scheme attached to a ``GoldDataset``.\n\nLocked on first accept per D21: ``primary_id``, ``instance_id``,\n``metadata_template``, ``dedup`` and ``column_mapping`` are immutable\nthereafter. To use a different scheme, create a new gold dataset\n(fork-the-gold-dataset semantics)."
+      },
+      "IdentifierSchemeResponse": {
+        "properties": {
+          "identifier_scheme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdentifierScheme-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scheme_locked": {
+            "type": "boolean",
+            "title": "Scheme Locked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "identifier_scheme",
+          "scheme_locked"
+        ],
+        "title": "IdentifierSchemeResponse",
+        "description": "Read-only response shape for the scheme sub-resource."
+      },
+      "ProjectVersionStatusResponse": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Project Id"
+          },
+          "schema_id": {
+            "type": "string",
+            "title": "Schema Id"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "latest_available_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Available Version"
+          },
+          "upgrade_available": {
+            "type": "boolean",
+            "title": "Upgrade Available"
+          },
+          "bump_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bump Level"
+          },
+          "project_status": {
+            "type": "string",
+            "title": "Project Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "schema_id",
+          "schema_version",
+          "latest_available_version",
+          "upgrade_available",
+          "bump_level",
+          "project_status"
+        ],
+        "title": "ProjectVersionStatusResponse"
+      },
+      "ReportFormat": {
+        "type": "string",
+        "enum": [
+          "json",
+          "csv"
+        ],
+        "title": "ReportFormat",
+        "description": "Supported report output formats."
+      },
+      "RevalidationOutcome": {
+        "properties": {
+          "submission_id": {
+            "type": "string",
+            "title": "Submission Id"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "validation_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationSummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "submission_id"
+        ],
+        "title": "RevalidationOutcome",
+        "description": "Per-submission result of a manual or automatic schema re-check.\n\n``validation_summary`` set means it ran \u2014 ``.is_valid`` is compliant vs.\ncorrections-needed, no separate status field needed. ``None`` means it\ndidn't run at all; ``detail`` says why (skipped, or errored)."
+      },
+      "ReviewerRequest": {
+        "properties": {
+          "reviewer": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reviewer",
+            "description": "Reviewer identifier"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Optional reviewer notes"
+          },
+          "match_column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Column",
+            "description": "Match column for revision submissions. Under the gold-anchored model the platform mints ``primary_id`` (and optionally ``instance_id``) at accept time; one of those is the natural match key. This override is retained for revisions against gold datasets whose scheme is not yet configured."
+          }
+        },
+        "type": "object",
+        "required": [
+          "reviewer"
+        ],
+        "title": "ReviewerRequest",
+        "description": "Request body for review actions requiring a reviewer identity."
+      },
+      "SnapDiffResponse": {
+        "properties": {
+          "added": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Added"
+          },
+          "removed": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Removed"
+          },
+          "changed": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Changed"
+          },
+          "rows_before": {
+            "type": "integer",
+            "title": "Rows Before",
+            "default": 0
+          },
+          "rows_after": {
+            "type": "integer",
+            "title": "Rows After",
+            "default": 0
+          },
+          "cols_before": {
+            "type": "integer",
+            "title": "Cols Before",
+            "default": 0
+          },
+          "cols_after": {
+            "type": "integer",
+            "title": "Cols After",
+            "default": 0
+          },
+          "columns_added": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns Added"
+          },
+          "columns_removed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns Removed"
+          }
+        },
+        "type": "object",
+        "title": "SnapDiffResponse"
+      },
+      "SnapshotEntry": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "description": "Sequential snapshot version number, starting at 1"
+          },
+          "submission_id": {
+            "type": "string",
+            "title": "Submission Id",
+            "description": "UUID of the accepted submission"
+          },
+          "submission_type": {
+            "type": "string",
+            "title": "Submission Type",
+            "description": "'standard' (append) or 'revision' (update)",
+            "default": "standard"
+          },
+          "rows_added": {
+            "type": "integer",
+            "title": "Rows Added",
+            "description": "Number of rows appended (standard submissions)",
+            "default": 0
+          },
+          "rows_updated": {
+            "type": "integer",
+            "title": "Rows Updated",
+            "description": "Number of rows updated (revision submissions)",
+            "default": 0
+          },
+          "total_rows": {
+            "type": "integer",
+            "title": "Total Rows",
+            "description": "Total rows in the dataset after this append"
+          },
+          "column_count": {
+            "type": "integer",
+            "title": "Column Count",
+            "description": "Number of columns in the dataset after this snapshot",
+            "default": 0
+          },
+          "column_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Column Names",
+            "description": "Schema column names (provenance columns excluded)"
+          },
+          "file_size_bytes": {
+            "type": "integer",
+            "title": "File Size Bytes",
+            "description": "Size of the snapshot CSV file in bytes",
+            "default": 0
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version",
+            "description": "Gold dataset schema version at acceptance time",
+            "default": ""
+          },
+          "accepted_by": {
+            "type": "string",
+            "title": "Accepted By",
+            "description": "Reviewer who accepted the submission"
+          },
+          "accepted_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Accepted At",
+            "description": "Timestamp of acceptance"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Optional reason or commit message for this change"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "submission_id",
+          "total_rows",
+          "accepted_by",
+          "accepted_at"
+        ],
+        "title": "SnapshotEntry",
+        "description": "A changelog entry recording one accepted submission appended to a gold dataset."
+      },
+      "SubmissionListResponse": {
+        "properties": {
+          "submissions": {
+            "items": {
+              "$ref": "#/components/schemas/SubmissionResponse"
+            },
+            "type": "array",
+            "title": "Submissions"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "submissions",
+          "total"
+        ],
+        "title": "SubmissionListResponse",
+        "description": "Paginated list of submissions."
+      },
+      "SubmissionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "schema_name": {
+            "type": "string",
+            "title": "Schema Name"
+          },
+          "schema_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Id"
+          },
+          "schema_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Version"
+          },
+          "latest_compliant_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Compliant Version"
+          },
+          "submission_type": {
+            "type": "string",
+            "title": "Submission Type",
+            "default": "standard"
+          },
+          "data_project_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Data Project Id"
+          },
+          "submitter": {
+            "type": "string",
+            "title": "Submitter"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SubmissionStatus"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/SubmissionVersion"
+            },
+            "type": "array",
+            "title": "Versions"
+          },
+          "claimed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed By"
+          },
+          "claimed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed At"
+          },
+          "reviewer_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewer Note"
+          },
+          "gold_dataset_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Gold Dataset Id"
+          },
+          "gold_dataset_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gold Dataset Name"
+          },
+          "original_accepted_submission_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Accepted Submission Id"
+          },
+          "new_schema_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "New Schema Columns"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "schema_name",
+          "data_project_id",
+          "submitter",
+          "status",
+          "versions",
+          "gold_dataset_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SubmissionResponse",
+        "description": "API response for a single submission."
+      },
+      "SubmissionStatus": {
+        "type": "string",
+        "enum": [
+          "uploaded",
+          "matching_schema",
+          "validating",
+          "pending_review",
+          "corrections_needed",
+          "accepted",
+          "rejected",
+          "withdrawn"
+        ],
+        "title": "SubmissionStatus",
+        "description": "Lifecycle states for a submission."
+      },
+      "SubmissionVersion": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version",
+            "description": "1-indexed version number"
+          },
+          "file_hash": {
+            "type": "string",
+            "title": "File Hash",
+            "description": "SHA-256 hex digest of the uploaded file"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name",
+            "description": "Original filename as uploaded"
+          },
+          "row_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Row Count",
+            "description": "Number of data rows (excluding header)",
+            "default": 0
+          },
+          "column_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Column Count",
+            "description": "Number of columns",
+            "default": 0
+          },
+          "uploaded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Uploaded At",
+            "description": "UTC timestamp of upload"
+          },
+          "validation_result_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Result Id",
+            "description": "Reference to stored ValidationResult, set after validation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "file_hash",
+          "file_name"
+        ],
+        "title": "SubmissionVersion",
+        "description": "Immutable snapshot of one uploaded file within a submission.\n\nEach time a submitter uploads or re-uploads a file, a new version is\ncreated. Versions are never mutated after creation."
+      },
+      "UpdateGoldDatasetRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "admins": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admins"
+          },
+          "reviewers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewers"
+          }
+        },
+        "type": "object",
+        "title": "UpdateGoldDatasetRequest",
+        "description": "Partial-update payload for a gold dataset's mutable fields.\n\nScheme edits go through the ``/identifier-scheme`` sub-resource \u2014\nthis endpoint never touches the scheme so its lock semantics stay\nsurgical."
+      },
+      "UpdateRowsRequest": {
+        "properties": {
+          "rows": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Rows",
+            "description": "Each entry must include id_column plus any subset of other columns to change"
+          },
+          "id_column": {
+            "type": "string",
+            "title": "Id Column",
+            "description": "Column identifying which row each entry targets",
+            "default": "instance_id"
+          },
+          "updated_by": {
+            "type": "string",
+            "title": "Updated By",
+            "description": "User performing the edit",
+            "default": ""
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Optional note recorded on the resulting snapshot"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rows"
+        ],
+        "title": "UpdateRowsRequest"
+      },
+      "UploadResponse": {
+        "properties": {
+          "submission": {
+            "$ref": "#/components/schemas/SubmissionResponse"
+          },
+          "validation_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationSummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "submission"
+        ],
+        "title": "UploadResponse",
+        "description": "Response from uploading and validating a submission.\n\n``validation_summary`` is None when the submission is still in\nMATCHING_SCHEMA \u2014 validation hasn't run yet at that point (see\n``upload_submission`` / ``confirm_mapping``)."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValidationSummaryResponse": {
+        "properties": {
+          "schema": {
+            "type": "string",
+            "title": "Schema"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "records": {
+            "type": "integer",
+            "title": "Records"
+          },
+          "columns": {
+            "type": "integer",
+            "title": "Columns"
+          },
+          "is_valid": {
+            "type": "boolean",
+            "title": "Is Valid"
+          },
+          "errors": {
+            "type": "integer",
+            "title": "Errors"
+          },
+          "warnings": {
+            "type": "integer",
+            "title": "Warnings"
+          },
+          "issues_by_type": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Issues By Type"
+          },
+          "issues_by_rule": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Issues By Rule"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schema",
+          "schema_version",
+          "records",
+          "columns",
+          "is_valid",
+          "errors",
+          "warnings"
+        ],
+        "title": "ValidationSummaryResponse",
+        "description": "Summary of a validation result."
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "APIKeyHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    }
+  }
+}
