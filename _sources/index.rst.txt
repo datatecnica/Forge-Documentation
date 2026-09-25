@@ -1,0 +1,31 @@
+Forge Documentation
+===================
+
+Forge is an AI-powered schema management and data harmonization platform.
+Define and version schemas (**SchemaForge**), then validate and manage data
+against them (**DataForge**) — with git-style versioning, review, and
+provenance throughout.
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Overview
+
+   platform/forge-executive-summary
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Reference
+
+   reference/registry-api
+   reference/dataforge-api
+   reference/sdk
+
+.. only:: internal
+
+   .. toctree::
+      :maxdepth: 1
+      :caption: Internal Reference
+
+      reference/internal/forge-utils
+      reference/internal/forge-core
+      reference/internal/forge-inference

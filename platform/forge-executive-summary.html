@@ -1,0 +1,423 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Forge &mdash; Forge  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=1e2d013c" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Registry Service API" href="../reference/registry-api.html" />
+    <link rel="prev" title="Forge Documentation" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Forge
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Overview</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Forge</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-problem">The Problem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-solution">The Solution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-model-git-for-data-governance">The Model: Git for Data Governance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#schemaforge">SchemaForge</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#registry-service">Registry Service</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#curation-workbench">Curation Workbench</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#harmonization-engine">Harmonization Engine</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dataforge">DataForge</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#why-a-separate-layer">Why a Separate Layer?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#core-capabilities">Core Capabilities</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#what-dataforge-does-not-do">What DataForge Does NOT Do</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-handoff">The Handoff</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#target-users">Target Users</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#why-this-architecture">Why This Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#summary">Summary</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../reference/registry-api.html">Registry Service API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/dataforge-api.html">DataForge API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/sdk.html">Python SDK (forge-sdk)</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Forge</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Forge</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/platform/forge-executive-summary.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="forge">
+<h1>Forge<a class="headerlink" href="#forge" title="Link to this heading"></a></h1>
+<blockquote>
+<div><p>Status: Active · verified 2026-04-10</p>
+</div></blockquote>
+<p><strong>Git-like version control and governance for schemas and curated datasets, with AI-assisted harmonization</strong></p>
+<hr class="docutils" />
+<section id="the-problem">
+<h2>The Problem<a class="headerlink" href="#the-problem" title="Link to this heading"></a></h2>
+<p>Organizations harmonizing data from multiple sources face three manual bottlenecks:</p>
+<ol class="arabic simple">
+<li><p><strong>Schema maintenance</strong> — Canonical data dictionaries degrade: duplicates, inconsistent naming, poor documentation. Cleanup happens in spreadsheets.</p></li>
+<li><p><strong>Field mapping</strong> — Each new source requires mapping hundreds of fields to canonical elements. Tedious, inconsistent, untracked.</p></li>
+<li><p><strong>Data management</strong> — Once mapped, data needs validation, QC review, corrections, and versioning. Often cobbled together with scripts.</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="the-solution">
+<h2>The Solution<a class="headerlink" href="#the-solution" title="Link to this heading"></a></h2>
+<p>Forge is a platform with two complementary layers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>┌─────────────────────────────────────────────────────────────────────────────┐
+│                                  FORGE                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                         SCHEMAFORGE                                    │  │
+│  │              "What should my data look like?"                          │  │
+│  │                                                                        │  │
+│  │    Registry          Curation          Harmonization                   │  │
+│  │    Service           Workbench         Engine                          │  │
+│  │    ─────────         ─────────         ─────────────                   │  │
+│  │    Store &amp; version   Clean &amp; audit     Map source fields               │  │
+│  │    canonical         canonical         to canonical                    │  │
+│  │    schemas           schemas           schemas (AI-assisted)           │  │
+│  │                                                                        │  │
+│  └────────────────────────────────┬──────────────────────────────────────┘  │
+│                                   │                                         │
+│                                   │ Schemas + Mappings                      │
+│                                   ▼                                         │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                          DATAFORGE                                     │  │
+│  │                "Here's actual data—validate and manage it"             │  │
+│  │                                                                        │  │
+│  │    Ingest → Validate → Review → Correct → Serve                        │  │
+│  │                                                                        │  │
+│  │    Apply mappings, enforce schemas, QC workflow,                       │  │
+│  │    version data, track provenance, handle corrections                  │  │
+│  │                                                                        │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="the-model-git-for-data-governance">
+<h2>The Model: Git for Data Governance<a class="headerlink" href="#the-model-git-for-data-governance" title="Link to this heading"></a></h2>
+<p>Forge applies the git/GitHub mental model to structured data management. The same workflows developers use for source code — branch, diff, propose changes, review, merge, track history — applied to schema definitions and curated datasets.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Git/GitHub</p></th>
+<th class="head"><p>Forge equivalent</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Repository</p></td>
+<td><p>Schema or Gold Dataset</p></td>
+</tr>
+<tr class="row-odd"><td><p>Branch</p></td>
+<td><p>Schema draft / fork with merge-back intent</p></td>
+</tr>
+<tr class="row-even"><td><p>Commit</p></td>
+<td><p>Published version (immutable)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Diff</p></td>
+<td><p>Semantic diff (field-level: added, removed, modified, renamed)</p></td>
+</tr>
+<tr class="row-even"><td><p>Pull Request</p></td>
+<td><p>Change Proposal (review before landing)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Merge</p></td>
+<td><p>Proposal accepted, changes land in canonical version</p></td>
+</tr>
+<tr class="row-even"><td><p>Fork</p></td>
+<td><p>Derived schema (independent copy with lineage tracking)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Tag / Release</p></td>
+<td><p>Published version pinned by downstream consumers</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why this matters:</strong> AI is getting very good at matching fields and suggesting schemas. What AI cannot provide is traceable, auditable, versioned decision records that satisfy institutional and regulatory requirements. Governance is the moat — matching is a commodity.</p>
+</section>
+<hr class="docutils" />
+<section id="schemaforge">
+<h2>SchemaForge<a class="headerlink" href="#schemaforge" title="Link to this heading"></a></h2>
+<p><em>Define what data should look like. Map sources to that standard.</em></p>
+<section id="registry-service">
+<h3>Registry Service<a class="headerlink" href="#registry-service" title="Link to this heading"></a></h3>
+<p><em>Single source of truth for schemas</em></p>
+<p>Stores canonical schemas and elements with full version history. Provides the API that all services use. Handles versioning, export, and change notifications.</p>
+<p>→ One place for schema data, properly versioned.</p>
+</section>
+<section id="curation-workbench">
+<h3>Curation Workbench<a class="headerlink" href="#curation-workbench" title="Link to this heading"></a></h3>
+<p><em>Keep schemas clean</em></p>
+<p>Automated quality audits find issues. Guided workflows fix them efficiently. Full audit trail.</p>
+<p>→ 50%+ faster schema maintenance. No more spreadsheets.</p>
+</section>
+<section id="harmonization-engine">
+<h3>Harmonization Engine<a class="headerlink" href="#harmonization-engine" title="Link to this heading"></a></h3>
+<p><em>Map fields with AI assistance</em></p>
+<p>Hybrid retrieval (lexical + semantic) finds candidates. LLM evaluation scores confidence. Humans review. Feedback improves the system.</p>
+<p>→ 70% faster field mapping. Consistent quality.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="dataforge">
+<h2>DataForge<a class="headerlink" href="#dataforge" title="Link to this heading"></a></h2>
+<p><em>Apply mappings. Validate data. Manage the lifecycle.</em></p>
+<section id="why-a-separate-layer">
+<h3>Why a Separate Layer?<a class="headerlink" href="#why-a-separate-layer" title="Link to this heading"></a></h3>
+<p>SchemaForge answers: <em>“What should data look like? How do I map to it?”</em></p>
+<p>But someone still needs to: apply those mappings to actual data, validate results, handle QC review, manage corrections, and serve production data.</p>
+<p>That’s DataForge.</p>
+</section>
+<section id="core-capabilities">
+<h3>Core Capabilities<a class="headerlink" href="#core-capabilities" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Capability</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Transform execution</strong></p></td>
+<td><p>Apply mappings from SchemaForge to actual data</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Schema validation</strong></p></td>
+<td><p>Enforce constraints, types, allowed values, conditional rules</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>QC workflow</strong></p></td>
+<td><p>Claim, review, approve/reject submissions with audit trail</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Data versioning</strong></p></td>
+<td><p>Track every change to every record</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Corrections flow</strong></p></td>
+<td><p>Handle updates to accepted data properly</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Cross-submission validation</strong></p></td>
+<td><p>Ensure entity consistency across batches</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Provenance tracking</strong></p></td>
+<td><p>Full lineage from source to production</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="what-dataforge-does-not-do">
+<h3>What DataForge Does NOT Do<a class="headerlink" href="#what-dataforge-does-not-do" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Schema creation/editing (→ SchemaForge Curation Workbench)</p></li>
+<li><p>Field mapping decisions (→ SchemaForge Harmonization Engine)</p></li>
+<li><p>Data warehousing (→ BigQuery, Snowflake)</p></li>
+<li><p>Analytics/BI (→ Metabase, Looker)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="the-handoff">
+<h2>The Handoff<a class="headerlink" href="#the-handoff" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Source Data
+    │
+    ▼
+┌─────────────────────────────────┐
+│   SCHEMAFORGE                   │
+│   Harmonization Engine          │
+│                                 │
+│  "Map field_x to CDE_y"         │
+│  "Transform value_a to value_b" │
+│                                 │
+│  Output: Mapping definitions    │
+└─────────────────────────────────┘
+    │
+    │ Export mappings
+    ▼
+┌─────────────────────────────────┐
+│   DATAFORGE                     │
+│                                 │
+│  "Apply mappings to this batch" │
+│  "Validate against schema"      │
+│  "Queue for QC review"          │
+│  "Track corrections"            │
+│                                 │
+│  Output: Production data        │
+└─────────────────────────────────┘
+    │
+    ▼
+Downstream Systems
+(Warehouse, Analytics, APIs)
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="target-users">
+<h2>Target Users<a class="headerlink" href="#target-users" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Role</p></th>
+<th class="head"><p>SchemaForge</p></th>
+<th class="head"><p>DataForge</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Data Architect</p></td>
+<td><p>Creates/maintains schemas</p></td>
+<td><p>Defines validation rules</p></td>
+</tr>
+<tr class="row-odd"><td><p>Data Engineer</p></td>
+<td><p>Maps source fields</p></td>
+<td><p>Ingests and transforms data</p></td>
+</tr>
+<tr class="row-even"><td><p>QC Reviewer</p></td>
+<td><p>Reviews mapping decisions</p></td>
+<td><p>Reviews data submissions</p></td>
+</tr>
+<tr class="row-odd"><td><p>Domain Expert</p></td>
+<td><p>Validates schema semantics</p></td>
+<td><p>Validates data quality</p></td>
+</tr>
+<tr class="row-even"><td><p>Data Consumer</p></td>
+<td><p>Queries schema definitions</p></td>
+<td><p>Queries production data</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="why-this-architecture">
+<h2>Why This Architecture<a class="headerlink" href="#why-this-architecture" title="Link to this heading"></a></h2>
+<p><strong>Clear separation of concerns:</strong></p>
+<ul class="simple">
+<li><p>Schema operations (low volume, high consistency) stay in SchemaForge</p></li>
+<li><p>Data operations (high volume, QC workflows) stay in DataForge</p></li>
+</ul>
+<p><strong>Independent scaling:</strong></p>
+<ul class="simple">
+<li><p>SchemaForge: dozens of schemas, thousands of elements</p></li>
+<li><p>DataForge: millions of records, terabytes of data</p></li>
+</ul>
+<p><strong>Different compliance needs:</strong></p>
+<ul class="simple">
+<li><p>Schema metadata: standard security</p></li>
+<li><p>Actual data: sensitive data handling, audit requirements (HIPAA, GDPR, etc. depending on domain)</p></li>
+</ul>
+<p><strong>Flexible deployment:</strong></p>
+<ul class="simple">
+<li><p>Use SchemaForge alone for schema management</p></li>
+<li><p>Add DataForge when ready for production data workflows</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Layer</p></th>
+<th class="head"><p>Purpose</p></th>
+<th class="head"><p>Key Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>SchemaForge</strong></p></td>
+<td><p>Schema lifecycle</p></td>
+<td><p>Define and map</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>DataForge</strong></p></td>
+<td><p>Data lifecycle</p></td>
+<td><p>Validate and manage</p></td>
+</tr>
+</tbody>
+</table>
+<p>Together: end-to-end data harmonization from raw sources to production-ready datasets.</p>
+<hr class="docutils" />
+<p><em>Domain-agnostic — works with any structured data requiring schema conformance and data quality.</em>
+<em>Initial deployment: biomedical research. The architecture applies to any domain with shared data standards.</em></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="Forge Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../reference/registry-api.html" class="btn btn-neutral float-right" title="Registry Service API" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, DataTecnica, LLC.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
